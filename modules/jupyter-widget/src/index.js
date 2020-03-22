@@ -4,25 +4,23 @@
 // Entry point for the Jupyter Notebook bundle containing custom Backbone model and view definitions.
 
 // Some static assets may be required by the custom widget javascript. The base
-// url for the notebook is not known at build time and is therefore computed
-// dynamically.
+// url for the notebook is not known at build time and is therefore computed dynamically.
 const dataBaseUrl = document.body && document.body.getAttribute('data-base-url');
 if (dataBaseUrl) {
   window.__webpack_public_path__ = `${dataBaseUrl}nbextensions/pydeck/nb_extension`;
 }
 
-let DeckGLModel;
-let DeckGLView;
 const {createDeck, updateDeck, loadExternalClasses} = require('./create-deck');
 const {MODULE_VERSION, MODULE_NAME} = require('./version');
 
+// TODO - rename these exports to DeckWidgetModel and DeckWidgetView...
+let DeckGLModel = null;
+let DeckGLView = null;
 try {
-  const widgetClasses = require('./widget');
-  DeckGLView = widgetClasses.DeckGLView;
-  DeckGLModel = widgetClasses.DeckGLModel;
+  DeckGLModel = require('./deck-widget-model');
+  DeckGLView = require('./deck-widget-view');
 } catch (err) {
-  DeckGLModel = null;
-  DeckGLView = null;
+  // TODO - when does this happen? Not even a console warning?
 }
 
 module.exports = {
@@ -32,5 +30,5 @@ module.exports = {
   MODULE_NAME,
   createDeck,
   updateDeck,
-  loadExternalClasses
+  loadExternalClasses // TODO - unused
 };

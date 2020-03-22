@@ -1,81 +1,12 @@
 /* global document */
 import {DOMWidgetModel, DOMWidgetView} from '@jupyter-widgets/base';
 
-import {MODULE_NAME, MODULE_VERSION} from './version';
-
 import {jsonConverter, createDeck, updateDeck} from './create-deck';
 import {deserializeMatrix, processDataBuffer} from './binary-transport';
 
 const MAPBOX_CSS_URL = 'https://api.tiles.mapbox.com/mapbox-gl-js/v1.2.1/mapbox-gl.css';
 const ERROR_BOX_CLASSNAME = 'error-box';
 
-/**
- * Hides a warning in the mapbox-gl.js library from surfacing in the notebook as text.
- */
-function hideMapboxCSSWarning() {
-  const missingCssWarning = document.getElementsByClassName('mapboxgl-missing-css')[0];
-  if (missingCssWarning) {
-    missingCssWarning.style.display = 'none';
-  }
-}
-
-function loadCss(url) {
-  const link = document.createElement('link');
-  link.type = 'text/css';
-  link.rel = 'stylesheet';
-  link.href = url;
-  document.getElementsByTagName('head')[0].appendChild(link);
-}
-// Note: Variables shared explictly between Python and JavaScript use snake_case
-export class DeckGLModel extends DOMWidgetModel {
-  defaults() {
-    return {
-      ...super.defaults(),
-      _model_name: DeckGLModel.model_name,
-      _model_module: DeckGLModel.model_module,
-      _model_module_version: DeckGLModel.model_module_version,
-      _view_name: DeckGLModel.view_name,
-      _view_module: DeckGLModel.view_module,
-      _view_module_version: DeckGLModel.view_module_version,
-      custom_libraries: [],
-      json_input: null,
-      mapbox_key: null,
-      selected_data: [],
-      data_buffer: null,
-      tooltip: null,
-      width: '100%',
-      height: 500,
-      js_warning: false
-    };
-  }
-
-  static get serializers() {
-    return {
-      ...DOMWidgetModel.serializers,
-      // Add any extra serializers here
-      data_buffer: {deserialize: deserializeMatrix}
-    };
-  }
-
-  static get model_name() {
-    return 'DeckGLModel';
-  }
-  static get model_module() {
-    return MODULE_NAME;
-  }
-  static get model_module_version() {
-    return MODULE_VERSION;
-  }
-  static get view_name() {
-    return 'DeckGLView';
-  }
-  static get view_module() {
-    return MODULE_NAME;
-  }
-  static get view_module_version() {
-    return MODULE_VERSION;
-  }
-}
 
 export class DeckGLView extends DOMWidgetView {
   initialize() {
@@ -105,6 +36,9 @@ export class DeckGLView extends DOMWidgetView {
     }
 
     loadCss(MAPBOX_CSS_URL);
+
+    WidgetTransport._onWidgetInitialized(this);
+
     this.deck = createDeck({
       mapboxApiKey,
       container,
@@ -117,9 +51,9 @@ export class DeckGLView extends DOMWidgetView {
   }
 
   remove() {
-    if (this.deck) {
-      this.deck.finalize();
-      this.deck = null;
+    if (this.transport) {
+      this.transport.finalize();
+      this.transport = null;
     }
   }
 
@@ -144,9 +78,8 @@ export class DeckGLView extends DOMWidgetView {
   }
 
   valueChanged() {
-    updateDeck(JSON.parse(this.model.get('json_input')), this.deck);
-    // Jupyter notebook displays an error that this suppresses
-    hideMapboxCSSWarning();
+    const json = JSON.parse(this.model.get('json_input'));
+    this.transport.onMessage({type: 'json', data: json});
   }
 
   handleClick(datum, e) {
@@ -194,4 +127,22 @@ function addErrorBox() {
     errorBox.style.display = 'none';
   };
   return errorBox;
+}
+
+/**
+ * Hides a warning in the mapbox-gl.js library from surfacing in the notebook as text.
+ */
+function hideMapboxCSSWarning() {
+  const missingCssWarning = document.getElementsByClassName('mapboxgl-missing-css')[0];
+  if (missingCssWarning) {
+    missingCssWarning.style.display = 'none';
+  }
+}
+
+function loadCss(url) {
+  const link = document.createElement('link');
+  link.type = 'text/css';
+  link.rel = 'stylesheet';
+  link.href = url;
+  document.getElementsByTagName('head')[0].appendChild(link);
 }
